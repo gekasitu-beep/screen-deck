@@ -104,7 +104,7 @@
         <button class="border border-gray-700 rounded-full bg-black hover:bg-white hover:text-black transition" style="font-size: 14px; padding: 8px 16px; font-weight: 600;" id="random-btn">ALL</button>
         <button class="border border-gray-700 rounded-full bg-black hover:bg-white hover:text-black transition" style="font-size: 14px; padding: 8px 16px; font-weight: 600;" id="unwatched-btn">未視聴</button>
         <button class="border border-gray-700 rounded-full bg-black hover:bg-white hover:text-black transition" style="font-size: 14px; padding: 8px 16px; font-weight: 600;" id="short-btn">SHORT</button>
-        <button class="border border-gray-700 rounded-full bg-purple-600 text-white hover:bg-purple-700 transition" style="font-size: 14px; padding: 8px 16px; font-weight: 700;" id="gallery-btn">🎬 GALLERY</button>
+        <button class="border border-gray-700 rounded-full bg-white text-black hover:bg-gray-200 transition" style="font-size: 14px; padding: 8px 16px; font-weight: 700;" id="gallery-btn">🎬 GALLERY</button>
         <button class="border border-gray-700 rounded-full bg-white text-black hover:bg-gray-200 transition" style="font-size: 14px; padding: 8px 16px; font-weight: 700;" id="search-btn">🔍 検索</button>
         <button class="border border-gray-700 rounded-full bg-white text-black hover:bg-gray-200 transition" style="font-size: 14px; padding: 8px 16px; font-weight: 700;" id="add-btn">+ ADD</button>
       </div>
@@ -552,13 +552,39 @@
 
     // ===== ギャラリー機能 =====
     async function openGallery() {
+      console.log('[Gallery] ボタンがクリックされました');
+      
       try {
+        // ローディング表示
+        const loadingMsg = document.createElement('div');
+        loadingMsg.id = 'gallery-loading';
+        loadingMsg.className = 'fixed inset-0 z-[130] bg-black/90 flex items-center justify-center';
+        loadingMsg.innerHTML = '<p class="text-white text-2xl animate-pulse">Loading Gallery...</p>';
+        document.body.appendChild(loadingMsg);
+        
+        console.log('[Gallery] 映画を読み込み中...');
+        
         // 全映画を取得
         const allMovies = [];
-        for (let page = 1; page <= totalPages; page++) {
+        
+        // まず現在のページ情報を取得
+        const firstPage = await callAPI('getMovies', { page: 1 });
+        const pages = firstPage.totalPages || 1;
+        
+        console.log('[Gallery] 総ページ数:', pages);
+        
+        // 全ページを取得
+        for (let page = 1; page <= pages; page++) {
           const data = await callAPI('getMovies', { page });
-          allMovies.push(...data.movies);
+          if (data.movies && data.movies.length > 0) {
+            allMovies.push(...data.movies);
+          }
         }
+        
+        console.log('[Gallery] 取得した映画数:', allMovies.length);
+        
+        // ローディングを削除
+        document.body.removeChild(loadingMsg);
         
         if (allMovies.length === 0) {
           alert('表示する映画がありません');
@@ -568,10 +594,19 @@
         galleryMovies = allMovies;
         galleryIndex = 0;
         showGalleryItem(0);
+        
+        console.log('[Gallery] ギャラリーを表示します');
+        
         document.getElementById('gallery-modal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
       } catch(error) {
-        alert('Error: ' + error.message);
+        console.error('[Gallery] エラー:', error);
+        
+        // ローディング表示を削除
+        const loadingMsg = document.getElementById('gallery-loading');
+        if (loadingMsg) document.body.removeChild(loadingMsg);
+        
+        alert('ギャラリーを開けませんでした: ' + error.message);
       }
     }
 
@@ -621,47 +656,49 @@
       showDetail(rowIndex);
     }
 
-    // ===== イベントリスナー =====
-    document.getElementById('home-btn').onclick = clearTagFilter;
-    document.getElementById('random-btn').onclick = () => pickRandom('all');
-    document.getElementById('unwatched-btn').onclick = () => pickRandom('unwatched');
-    document.getElementById('short-btn').onclick = () => pickRandom('short');
-    document.getElementById('gallery-btn').onclick = openGallery;
-    document.getElementById('search-btn').onclick = openSearch;
-    document.getElementById('add-btn').onclick = openAdd;
-    document.getElementById('prev-btn').onclick = () => loadPage(currPage - 1);
-    document.getElementById('next-btn').onclick = () => loadPage(currPage + 1);
-    document.getElementById('close-modal-btn').onclick = closeModal;
-    document.getElementById('cancel-add-btn').onclick = closeAdd;
-    document.getElementById('reg-btn').onclick = submitAdd;
-    document.getElementById('edit-id-btn').onclick = editId;
-    document.getElementById('toggle-status-btn').onclick = toggleStatus;
-    document.getElementById('clear-tag').onclick = clearTagFilter;
-    document.getElementById('cancel-search-btn').onclick = closeSearch;
-    document.getElementById('search-submit-btn').onclick = submitSearch;
-    document.getElementById('clear-search').onclick = clearTagFilter;
-    document.getElementById('search-input').addEventListener('keypress', e => {
-      if (e.key === 'Enter') submitSearch();
-    });
-
-    // ギャラリーコントロール
-    document.getElementById('close-gallery-btn').onclick = closeGallery;
-    document.getElementById('gallery-prev').onclick = galleryPrev;
-    document.getElementById('gallery-next').onclick = galleryNext;
-    document.getElementById('gallery-view-detail').onclick = galleryViewDetail;
-    
-    // キーボードナビゲーション
-    document.addEventListener('keydown', e => {
-      const galleryModal = document.getElementById('gallery-modal');
-      if (!galleryModal.classList.contains('hidden')) {
-        if (e.key === 'ArrowLeft') galleryPrev();
-        if (e.key === 'ArrowRight') galleryNext();
-        if (e.key === 'Escape') closeGallery();
-      }
-    });
-
     // ===== 初期化 =====
-    window.onload = () => loadPage(1);
+    window.onload = () => {
+      loadPage(1);
+      
+      // イベントリスナー設定
+      document.getElementById('home-btn').onclick = clearTagFilter;
+      document.getElementById('random-btn').onclick = () => pickRandom('all');
+      document.getElementById('unwatched-btn').onclick = () => pickRandom('unwatched');
+      document.getElementById('short-btn').onclick = () => pickRandom('short');
+      document.getElementById('gallery-btn').onclick = openGallery;
+      document.getElementById('search-btn').onclick = openSearch;
+      document.getElementById('add-btn').onclick = openAdd;
+      document.getElementById('prev-btn').onclick = () => loadPage(currPage - 1);
+      document.getElementById('next-btn').onclick = () => loadPage(currPage + 1);
+      document.getElementById('close-modal-btn').onclick = closeModal;
+      document.getElementById('cancel-add-btn').onclick = closeAdd;
+      document.getElementById('reg-btn').onclick = submitAdd;
+      document.getElementById('edit-id-btn').onclick = editId;
+      document.getElementById('toggle-status-btn').onclick = toggleStatus;
+      document.getElementById('clear-tag').onclick = clearTagFilter;
+      document.getElementById('cancel-search-btn').onclick = closeSearch;
+      document.getElementById('search-submit-btn').onclick = submitSearch;
+      document.getElementById('clear-search').onclick = clearTagFilter;
+      document.getElementById('search-input').addEventListener('keypress', e => {
+        if (e.key === 'Enter') submitSearch();
+      });
+
+      // ギャラリーコントロール
+      document.getElementById('close-gallery-btn').onclick = closeGallery;
+      document.getElementById('gallery-prev').onclick = galleryPrev;
+      document.getElementById('gallery-next').onclick = galleryNext;
+      document.getElementById('gallery-view-detail').onclick = galleryViewDetail;
+      
+      // キーボードナビゲーション
+      document.addEventListener('keydown', e => {
+        const galleryModal = document.getElementById('gallery-modal');
+        if (!galleryModal.classList.contains('hidden')) {
+          if (e.key === 'ArrowLeft') galleryPrev();
+          if (e.key === 'ArrowRight') galleryNext();
+          if (e.key === 'Escape') closeGallery();
+        }
+      });
+    };
 
     // ===== Service Worker登録 =====
     if ('serviceWorker' in navigator) {
