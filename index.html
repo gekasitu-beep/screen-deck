@@ -104,6 +104,7 @@
         <button class="border border-gray-700 rounded-full bg-black hover:bg-white hover:text-black transition" style="font-size: 14px; padding: 8px 16px; font-weight: 600;" id="random-btn">ALL</button>
         <button class="border border-gray-700 rounded-full bg-black hover:bg-white hover:text-black transition" style="font-size: 14px; padding: 8px 16px; font-weight: 600;" id="unwatched-btn">未視聴</button>
         <button class="border border-gray-700 rounded-full bg-black hover:bg-white hover:text-black transition" style="font-size: 14px; padding: 8px 16px; font-weight: 600;" id="short-btn">SHORT</button>
+        <button class="border border-gray-700 rounded-full bg-purple-600 text-white hover:bg-purple-700 transition" style="font-size: 14px; padding: 8px 16px; font-weight: 700;" id="gallery-btn">🎬 GALLERY</button>
         <button class="border border-gray-700 rounded-full bg-white text-black hover:bg-gray-200 transition" style="font-size: 14px; padding: 8px 16px; font-weight: 700;" id="search-btn">🔍 検索</button>
         <button class="border border-gray-700 rounded-full bg-white text-black hover:bg-gray-200 transition" style="font-size: 14px; padding: 8px 16px; font-weight: 700;" id="add-btn">+ ADD</button>
       </div>
@@ -196,6 +197,30 @@
     </div>
   </div>
 
+  <div id="gallery-modal" class="fixed inset-0 z-[120] hidden bg-black">
+    <button id="close-gallery-btn" class="fixed top-5 right-5 w-14 h-14 flex items-center justify-center bg-white/10 hover:bg-white hover:text-black rounded-full z-50 transition text-2xl font-bold backdrop-blur">✕</button>
+    
+    <div class="flex items-center justify-center h-screen relative">
+      <button id="gallery-prev" class="absolute left-4 md:left-10 w-12 h-12 md:w-16 md:h-16 flex items-center justify-center bg-white/10 hover:bg-white hover:text-black rounded-full z-40 transition text-2xl font-bold backdrop-blur">←</button>
+      
+      <div class="flex flex-col items-center justify-center w-full px-4 md:px-20">
+        <div class="relative mb-6">
+          <img id="gallery-poster" class="rounded-xl shadow-2xl max-h-[70vh] w-auto" alt="Movie Poster">
+          <div id="gallery-watched-badge" class="hidden absolute top-4 right-4 bg-green-500 text-black w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg">✓</div>
+        </div>
+        
+        <div class="text-center max-w-2xl">
+          <h2 id="gallery-title" class="text-3xl md:text-4xl font-black mb-2 title-font"></h2>
+          <p id="gallery-year" class="text-xl silver-text mb-4"></p>
+          <p id="gallery-position" class="mono-font text-gray-500 text-sm">1 / 10</p>
+          <button id="gallery-view-detail" class="mt-6 px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-full transition">詳細を見る</button>
+        </div>
+      </div>
+      
+      <button id="gallery-next" class="absolute right-4 md:right-10 w-12 h-12 md:w-16 md:h-16 flex items-center justify-center bg-white/10 hover:bg-white hover:text-black rounded-full z-40 transition text-2xl font-bold backdrop-blur">→</button>
+    </div>
+  </div>
+
   <script>
     // ===== 設定 =====
     const API_URL = 'https://script.google.com/macros/s/AKfycbwqnV0XAXzQoCrr4xlkpSFPh3t1fKRAaIilcna6Tsc2tP30lHNPdrC4Iic50RxfN7nu/exec';
@@ -207,6 +232,8 @@
     let totalPages = 1;
     let currentTag = null;
     let currentSearch = null;
+    let galleryMovies = [];
+    let galleryIndex = 0;
 
     // ===== API呼び出し =====
     async function callAPI(action, params = {}) {
@@ -523,11 +550,83 @@
       }
     }
 
+    // ===== ギャラリー機能 =====
+    async function openGallery() {
+      try {
+        // 全映画を取得
+        const allMovies = [];
+        for (let page = 1; page <= totalPages; page++) {
+          const data = await callAPI('getMovies', { page });
+          allMovies.push(...data.movies);
+        }
+        
+        if (allMovies.length === 0) {
+          alert('表示する映画がありません');
+          return;
+        }
+        
+        galleryMovies = allMovies;
+        galleryIndex = 0;
+        showGalleryItem(0);
+        document.getElementById('gallery-modal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      } catch(error) {
+        alert('Error: ' + error.message);
+      }
+    }
+
+    function showGalleryItem(index) {
+      if (index < 0 || index >= galleryMovies.length) return;
+      
+      galleryIndex = index;
+      const movie = galleryMovies[index];
+      
+      document.getElementById('gallery-poster').src = movie.poster;
+      document.getElementById('gallery-title').innerText = movie.titleJP;
+      document.getElementById('gallery-year').innerText = movie.year;
+      document.getElementById('gallery-position').innerText = `${index + 1} / ${galleryMovies.length}`;
+      
+      // 視聴済みバッジ
+      const badge = document.getElementById('gallery-watched-badge');
+      if (movie.status === '視聴済み' || movie.status === '視聴済') {
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+      
+      // 詳細表示ボタンにrowIndexを保存
+      document.getElementById('gallery-view-detail').dataset.rowIndex = movie.rowIndex;
+    }
+
+    function galleryNext() {
+      if (galleryIndex < galleryMovies.length - 1) {
+        showGalleryItem(galleryIndex + 1);
+      }
+    }
+
+    function galleryPrev() {
+      if (galleryIndex > 0) {
+        showGalleryItem(galleryIndex - 1);
+      }
+    }
+
+    function closeGallery() {
+      document.getElementById('gallery-modal').classList.add('hidden');
+      document.body.style.overflow = 'auto';
+    }
+
+    function galleryViewDetail() {
+      const rowIndex = parseInt(document.getElementById('gallery-view-detail').dataset.rowIndex);
+      closeGallery();
+      showDetail(rowIndex);
+    }
+
     // ===== イベントリスナー =====
     document.getElementById('home-btn').onclick = clearTagFilter;
     document.getElementById('random-btn').onclick = () => pickRandom('all');
     document.getElementById('unwatched-btn').onclick = () => pickRandom('unwatched');
     document.getElementById('short-btn').onclick = () => pickRandom('short');
+    document.getElementById('gallery-btn').onclick = openGallery;
     document.getElementById('search-btn').onclick = openSearch;
     document.getElementById('add-btn').onclick = openAdd;
     document.getElementById('prev-btn').onclick = () => loadPage(currPage - 1);
@@ -543,6 +642,22 @@
     document.getElementById('clear-search').onclick = clearTagFilter;
     document.getElementById('search-input').addEventListener('keypress', e => {
       if (e.key === 'Enter') submitSearch();
+    });
+
+    // ギャラリーコントロール
+    document.getElementById('close-gallery-btn').onclick = closeGallery;
+    document.getElementById('gallery-prev').onclick = galleryPrev;
+    document.getElementById('gallery-next').onclick = galleryNext;
+    document.getElementById('gallery-view-detail').onclick = galleryViewDetail;
+    
+    // キーボードナビゲーション
+    document.addEventListener('keydown', e => {
+      const galleryModal = document.getElementById('gallery-modal');
+      if (!galleryModal.classList.contains('hidden')) {
+        if (e.key === 'ArrowLeft') galleryPrev();
+        if (e.key === 'ArrowRight') galleryNext();
+        if (e.key === 'Escape') closeGallery();
+      }
     });
 
     // ===== 初期化 =====
