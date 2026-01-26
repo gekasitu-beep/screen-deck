@@ -1,11 +1,9 @@
-const CACHE_NAME = 'screen-deck-v1';
+const CACHE_NAME = 'screen-deck-v2';
 const urlsToCache = [
   './',
   './index.html',
   './offline.html',
-  './manifest.json',
-  'https://cdn.tailwindcss.com',
-  'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&family=Urbanist:wght@400;500;600;700;800&display=swap'
+  './manifest.json'
 ];
 
 // インストール
@@ -20,7 +18,6 @@ self.addEventListener('install', event => {
       .then(() => self.skipWaiting())
   );
 });
-
 // アクティベーション
 self.addEventListener('activate', event => {
   console.log('[SW] Activate');
