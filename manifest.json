@@ -1,0 +1,24 @@
+{
+  "name": "Screen Deck",
+  "short_name": "Screen Deck",
+  "description": "Personal Movie Collection Manager",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://drive.google.com/uc?export=view&id=1wXXnWU1jUCjajzlGiuNhP1kQxm53_9Lc",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://drive.google.com/uc?export=view&id=1wXXnWU1jUCjajzlGiuNhP1kQxm53_9Lc",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
